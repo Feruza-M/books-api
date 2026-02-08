@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: books-db
+    environment:
+      POSTGRES_DB: library
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: secretpass
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U appuser -d library"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: .
+    container_name: books-api
+    env_file:
+      - ./env.example
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "8000"
+
+  nginx:
+    image: nginx:alpine
+    container_name: books-nginx
+    ports:
+      - "8085:80"
+    volumes:
+      - ./nginx/books.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
